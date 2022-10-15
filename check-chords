@@ -1,0 +1,118 @@
+#!/usr/bin/env node
+
+const Right = "right";
+const Left = "left";
+const Index = "index";
+const Middle = "middle";
+const Ring = "ring";
+const Pinky = "pinky";
+const ThumbTip = "thumb-tip";
+const ThumbMid = "thumb-mid";
+const Palm = "palm";
+const North = "north";
+const South = "south";
+const West = "west";
+const East = "east";
+
+const motions = {
+  a: [Right, Index, West],
+  b: [Right, ThumbMid, West],
+  c: [Left, ThumbTip, South],
+  d: [Right, ThumbTip, South],
+  e: [Left, Index, South],
+  f: [Right, ThumbTip, West],
+  g: [Left, ThumbMid, West],
+  h: [Right, ThumbTip, East],
+  i: [Left, Middle, East],
+  j: [Right, Middle, East],
+  k: [Left, ThumbTip, East],
+  l: [Right, Middle, West],
+  m: [Left, ThumbTip, West],
+  n: [Right, Middle, South],
+  o: [Left, Middle, South],
+  p: [Right, ThumbTip, North],
+  q: [Right, ThumbMid, South],
+  r: [Left, Index, East],
+  s: [Right, Ring, South],
+  t: [Right, Index, South],
+  u: [Left, Ring, South],
+  v: [Left, ThumbTip, North],
+  w: [Left, ThumbMid, East],
+  x: [Right, ThumbMid, North],
+  y: [Right, Ring, West],
+  z: [Left, ThumbMid, South],
+
+  ",": [Left, Ring, West],
+  "'": [Left, Ring, East],
+  ".": [Left, Middle, West],
+  ";": [Right, Ring, East],
+  "-": [Left, Palm, North],
+  "?": [Right, Palm, North],
+  "/": [Left, Palm, East],
+
+  dup: [Right, ThumbMid, East],
+};
+
+const has_problem = (letters) => {
+  const seen_finger = {};
+  const seen_thumb = {};
+  const seen_letter = {};
+
+  for (const letter of letters) {
+    if (seen_letter[letter]) {
+      return `Duplicate letter "${letter}"`;
+    }
+    seen_letter[letter] = true;
+
+    if (!motions[letter]) {
+      if (motions[letter.toLowerCase()]) {
+        return `Unknown input "${letter}"; did you mean "${letter.toLowerCase()}"?`;
+      } else {
+        return `Unknown input "${letter}"`;
+      }
+    }
+
+    const [hand, digit, direction] = motions[letter];
+    const finger = [hand, digit].join(" ");
+    if (seen_finger[finger]) {
+      const other_dir = motions[seen_finger[finger]][2];
+      return `Multiple directions for ${finger} finger: ${other_dir} for "${seen_finger[finger]}" vs ${direction} for "${letter}"`;
+    }
+    seen_finger[finger] = letter;
+
+    if (digit === ThumbTip || digit === ThumbMid || digit == Palm) {
+      if (seen_thumb[hand]) {
+        const [other_dir, other_digit, other_letter] = seen_thumb[hand];
+        if (other_dir !== direction) {
+          return `Multiple directions for ${hand} thumb: ${other_digit} ${other_dir} for "${other_letter}" vs ${digit} ${direction} for "${letter}"`;
+        }
+      }
+      seen_thumb[hand] = [direction, digit, letter];
+    }
+  }
+
+  return null;
+};
+
+const check = (letters) => {
+  const problem = has_problem(letters);
+  if (problem) {
+    console.error(`\x1b[1;31m✘\x1b[m ${problem}`);
+  } else {
+    console.log(`\x1b[1;32m✔\x1b[m Chord ${letters.join("+")} is okay`);
+  }
+};
+
+const readline = require("readline");
+const rl = readline.createInterface({
+  input: process.stdin,
+});
+
+process.stdout.write("chord: ");
+rl.on("line", (line) => {
+  if (line.length) {
+    check(line.split(" "));
+    process.stdout.write("\n");
+  }
+  process.stdout.write("chord: ");
+});
