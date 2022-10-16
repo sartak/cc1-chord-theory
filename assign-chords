@@ -1,0 +1,438 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use List::Util 'shuffle';
+
+my $beat_score = shift;
+
+my %word_for_chord = (
+  et => 'the',
+  bc => 'because',
+  sd => 'should',
+);
+
+my %chord_for_word = reverse %word_for_chord;
+
+my %freq;
+
+open my $handle, '<', 'english-200.txt' or die $!;
+my @words;
+while (<$handle>) {
+  chomp;
+  next if length $_ == 1;
+  push @words, $_;
+  $freq{$_} = $.;
+}
+
+my @chords;
+while (<DATA>) {
+  chomp;
+  push @chords, join "", split / \+ /, $_;
+}
+
+my %possible_for_word;
+my %possible_for_chord;
+my %orig_possible_for_word;
+my %orig_possible_for_chord;
+my @orphans;
+
+for my $word (@words) {
+  CHORD: for my $chord (@chords) {
+    for my $letter (split '', $chord) {
+      next CHORD if $word !~ /\Q$letter\E/;
+    }
+
+    $orig_possible_for_word{$word}{$chord} = 1;
+    $orig_possible_for_chord{$chord}{$word} = 1;
+
+    next if $chord_for_word{$word};
+    next if $word_for_chord{$chord};
+
+    $possible_for_word{$word}{$chord} = 1;
+    $possible_for_chord{$chord}{$word} = 1;
+  }
+}
+
+while (1) {
+  my $best_word;
+  my $best_count;
+
+  my @k = shuffle keys %possible_for_word;
+  for my $word (@k) {
+    my $count = keys %{ $possible_for_word{$word} };
+    if (!defined($best_count) || $count < $best_count) {
+      ($best_count, $best_word) = ($count, $word);
+      last if $count == 1;
+    }
+  }
+
+  my $word = $best_word;
+
+  last if !defined($word);
+
+  my @possible = keys %{ $possible_for_word{$word} };
+  my $chord = $possible[rand @possible];
+  if (!defined($chord)) {
+    push @orphans, $word;
+    delete $possible_for_word{$word};
+    next;
+  }
+
+  $chord_for_word{$word} = $chord;
+  $word_for_chord{$chord} = $word;
+
+  for my $word (keys %{ $possible_for_chord{$chord} }) {
+    if ($possible_for_word{$word}) {
+      delete $possible_for_word{$word}{$chord};
+    }
+  }
+
+  delete $possible_for_chord{$chord};
+  delete $possible_for_word{$word};
+}
+
+my $score = 0;
+for my $chord (keys %word_for_chord) {
+  my $word = $word_for_chord{$chord};
+  my @c = split '', $chord;
+  my @w = split '', $word;
+
+  if ($c[0] eq $w[0] || $c[1] eq $w[0]) {
+    $score += 2;
+  }
+  if ($c[0] eq $w[0] && $c[1] eq $w[1]) {
+    $score++;
+  }
+  if ($c[1] eq $w[0] && $c[0] eq $w[1]) {
+    $score++;
+  }
+  if ($c[0] eq $w[0] && $c[1] eq $w[-1]) {
+    $score++;
+  }
+  if ($c[1] eq $w[0] && $c[0] eq $w[-1]) {
+    $score++;
+  }
+}
+
+
+for my $word (@orphans) {
+  $score -= 3;
+}
+
+$score -= 100;
+$score = 1 if $score < 1;
+exit $score if $score < $beat_score;
+
+for my $chord (sort { $freq{$word_for_chord{$a}} <=> $freq{$word_for_chord{$b}} } keys %word_for_chord) {
+  my $word = $word_for_chord{$chord};
+  my @c = sort { index($word, $a) <=> index($word, $b) } split '', $chord;
+  my $c = join " + ", @c;
+  print "$c,$word\n";
+}
+
+print "\n";
+
+for my $chord (grep { !$word_for_chord{$_} } sort @chords) {
+  my $c = join ' + ', split '', $chord;
+  print "unused chord: $c\n";
+}
+
+print "\n";
+
+for my $word (sort { $freq{$a} <=> $freq{$b} } @orphans) {
+  print "No available chord for $word: \n";
+  for my $chord (sort keys %{ $orig_possible_for_word{$word} }) {
+    my $w = $word_for_chord{$chord};
+    my @c = sort { index($word, $a) <=> index($word, $b) } split '', $chord;
+    my $c = join " + ", @c;
+    print "  $c => $w\n";
+  }
+  print "\n";
+}
+
+print scalar(@orphans) . " orphans, score $score\n";
+exit $score;
+
+__END__
+a + b
+a + c
+a + d
+a + e
+a + f
+a + g
+a + h
+a + i
+a + j
+a + k
+a + l
+a + m
+a + n
+a + o
+a + p
+a + q
+a + r
+a + s
+a + u
+a + v
+a + w
+a + x
+a + y
+a + z
+b + c
+b + e
+b + f
+b + g
+b + i
+b + j
+b + k
+b + l
+b + m
+b + n
+b + o
+b + r
+b + s
+b + t
+b + u
+b + v
+b + w
+b + y
+b + z
+c + d
+c + e
+c + f
+c + h
+c + i
+c + j
+c + l
+c + n
+c + o
+c + p
+c + q
+c + r
+c + s
+c + t
+c + u
+c + x
+c + y
+c + z
+d + e
+d + g
+d + i
+d + j
+d + k
+d + l
+d + m
+d + n
+d + o
+d + q
+d + r
+d + s
+d + t
+d + u
+d + v
+d + w
+d + y
+d + z
+e + f
+e + g
+e + h
+e + i
+e + j
+e + k
+e + l
+e + m
+e + n
+e + o
+e + p
+e + q
+e + s
+e + t
+e + u
+e + v
+e + w
+e + x
+e + y
+e + z
+f + g
+f + i
+f + j
+f + k
+f + l
+f + m
+f + n
+f + o
+f + r
+f + s
+f + t
+f + u
+f + v
+f + w
+f + y
+f + z
+g + h
+g + i
+g + j
+g + l
+g + m
+g + n
+g + o
+g + p
+g + q
+g + r
+g + s
+g + t
+g + u
+g + x
+g + y
+h + i
+h + j
+h + k
+h + l
+h + m
+h + n
+h + o
+h + r
+h + s
+h + t
+h + u
+h + v
+h + w
+h + y
+h + z
+i + j
+i + k
+i + l
+i + m
+i + n
+i + p
+i + q
+i + r
+i + s
+i + t
+i + u
+i + v
+i + w
+i + x
+i + y
+i + z
+j + k
+j + m
+j + o
+j + p
+j + q
+j + r
+j + s
+j + t
+j + u
+j + v
+j + w
+j + x
+j + y
+j + z
+k + l
+k + n
+k + o
+k + p
+k + q
+k + r
+k + s
+k + t
+k + u
+k + w
+k + x
+k + y
+l + m
+l + o
+l + p
+l + q
+l + r
+l + s
+l + t
+l + u
+l + v
+l + w
+l + x
+l + y
+l + z
+m + n
+m + o
+m + p
+m + q
+m + r
+m + s
+m + t
+m + u
+m + x
+m + y
+n + o
+n + p
+n + q
+n + r
+n + s
+n + t
+n + u
+n + v
+n + w
+n + x
+n + y
+n + z
+o + p
+o + q
+o + r
+o + s
+o + t
+o + u
+o + v
+o + w
+o + x
+o + y
+o + z
+p + r
+p + s
+p + t
+p + u
+p + v
+p + w
+p + x
+p + y
+p + z
+q + r
+q + s
+q + t
+q + u
+q + v
+q + w
+q + y
+q + z
+r + s
+r + t
+r + u
+r + v
+r + w
+r + x
+r + y
+r + z
+s + t
+s + u
+s + v
+s + w
+s + x
+s + z
+t + u
+t + v
+t + w
+t + x
+t + y
+t + z
+u + v
+u + w
+u + x
+u + y
+u + z
+v + x
+v + y
+w + x
+w + y
+x + y
+x + z
+y + z
