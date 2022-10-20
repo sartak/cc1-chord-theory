@@ -6,7 +6,6 @@ b + s
 b + v
 b + z
 c + Dup
-c + j
 c + p
 c + q
 c + x
@@ -90,6 +89,7 @@ t + v
 t + x
 t + z
 u + Dup
+u + l
 u + v
 u + x
 u + z
